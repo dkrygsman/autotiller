@@ -23,6 +23,10 @@
 /* USER CODE BEGIN Includes */
 #include <stdlib.h>
 #include <stdio.h>
+
+#include "bno055.h"
+#include "bno_config.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,9 +47,30 @@
 /* Private variables ---------------------------------------------------------*/
 ADC_HandleTypeDef hadc1;
 
+I2C_HandleTypeDef hi2c1;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
+
+bno055_t bno;
+error_bno err;
+
+float heading, heading_error;
+float heading_prev_error = 0;
+uint32_t new_yaw;
+float heading_setpoint = 180;
+
+float heading_difference;
+
+float PID_p, PID_i, PID_d, PID_total;
+
+float kp, ki, kd;
+
+float pot_one, pot_two, pot_three;
+
+uint32_t period = 50;
+
 
 /* USER CODE END PV */
 
@@ -54,6 +79,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_I2C1_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -80,6 +106,7 @@ void ADC_Select_CH1 (void)
 
 	  sConfig.Channel = ADC_CHANNEL_1;
 	  sConfig.Rank = 1;
+	  sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES;
 	  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
 	  {
 	    Error_Handler();
@@ -92,13 +119,19 @@ void ADC_Select_CH4 (void)
 
 	  sConfig.Channel = ADC_CHANNEL_4;
 	  sConfig.Rank = 1;
+	  sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES;
 	  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
 	  {
 		Error_Handler();
 	  }
 }
 
-uint16_t ADC_val[3];
+
+float remap_val(float value, float in_min, float in_max, float out_min, float out_max)
+{
+	return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 
 /* USER CODE END 0 */
 
@@ -133,8 +166,41 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_ADC1_Init();
+  MX_I2C1_Init();
   /* USER CODE BEGIN 2 */
 
+
+  bno = (bno055_t)
+  {
+	.i2c = &hi2c1, .addr = BNO_ADDR, .mode = BNO_MODE_IMU, ._temp_unit = 0,
+	// .ptr = &bno,
+  };
+	HAL_Delay(1000);
+
+	if ((err = bno055_init(&bno)) == BNO_OK)
+	{
+		printf("[+] BNO055 init success\r\n");
+		HAL_Delay(100);
+	}
+	else
+	{
+		printf("[!] BNO055 init failed\r\n");
+		printf("%s\n", bno055_err_str(err));
+		Error_Handler();
+	}
+		HAL_Delay(100);
+		err = bno055_set_unit(&bno, BNO_TEMP_UNIT_C, BNO_GYR_UNIT_DPS, BNO_ACC_UNITSEL_M_S2, BNO_EUL_UNIT_DEG);
+	if (err != BNO_OK)
+	{
+		printf("[BNO] Failed to set units. Err: %d\r\n", err);
+	}
+	else
+	{
+		printf("[BNO] Unit selection success\r\n");
+	}
+
+	HAL_Delay(1000);
+	bno055_euler_t eul = {0, 0, 0};
 
   /* USER CODE END 2 */
 
@@ -146,28 +212,67 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
+	  bno.euler(&bno, &eul);
+	  new_yaw = (int)eul.yaw;
+	  new_yaw = (new_yaw + 180) % 360;
+
 	  ADC_Select_CH0();
 	  HAL_ADC_Start(&hadc1);
 	  HAL_ADC_PollForConversion(&hadc1, 1000);
-	  ADC_val[0] = HAL_ADC_GetValue(&hadc1);
+	  pot_one = HAL_ADC_GetValue(&hadc1);
+	  kp = pot_one / 200;
 	  HAL_ADC_Stop(&hadc1);
 
 	  ADC_Select_CH1();
 	  HAL_ADC_Start(&hadc1);
 	  HAL_ADC_PollForConversion(&hadc1, 1000);
-	  ADC_val[1] = HAL_ADC_GetValue(&hadc1);
+	  pot_two = HAL_ADC_GetValue(&hadc1);
+	  ki = pot_two / 800;
 	  HAL_ADC_Stop(&hadc1);
 
 	  ADC_Select_CH4();
 	  HAL_ADC_Start(&hadc1);
 	  HAL_ADC_PollForConversion(&hadc1, 1000);
-	  ADC_val[2] = HAL_ADC_GetValue(&hadc1);
+	  pot_three = HAL_ADC_GetValue(&hadc1);
+	  kd = pot_three;
 	  HAL_ADC_Stop(&hadc1);
 
 
-	  printf("Ch1: %d Ch2: %d  Ch3: %d  \r\n", ADC_val[0], ADC_val[1], ADC_val[2]);
+	  heading = new_yaw;
+	  heading_error = heading_setpoint - heading;
+	  PID_p = kp *heading_error;
+
+	  heading_difference = heading_error - heading_prev_error;
+	  PID_d = kd*((heading_error - heading_prev_error)/period);
+
+	  if(heading_error > -3 && heading_error < 3)
+	  {
+		  PID_i = PID_i + (ki * heading_error);
+	  }
+	  else
+	  {
+		  PID_i = 0;
+	  }
+
+	  PID_total = PID_p + PID_i + PID_d;
+
+	  PID_total = remap_val(PID_total, -3000, 3000, 0, 150);
+
+	  if(PID_total < 20)
+	  {
+		  PID_total = 20;
+	  }
+	  if(PID_total > 160)
+	  {
+		  PID_total = 160;
+	  }
+
+
+	  printf("K_p: %3.0f K_i: %2.2f  K_d: %4.0f New_Yaw: %ld PID_tot: %4.2f\r\n", kp, ki, kd, new_yaw, PID_total);
 	  fflush(stdout);
 	  HAL_Delay(50);
+
+
   }
   /* USER CODE END 3 */
 }
@@ -230,7 +335,7 @@ static void MX_ADC1_Init(void)
 
   /* USER CODE END ADC1_Init 0 */
 
-//  ADC_ChannelConfTypeDef sConfig = {0};
+  //ADC_ChannelConfTypeDef sConfig = {0};
 
   /* USER CODE BEGIN ADC1_Init 1 */
 
@@ -247,7 +352,7 @@ static void MX_ADC1_Init(void)
   hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
   hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 1;
+  hadc1.Init.NbrOfConversion = 3;
   hadc1.Init.DMAContinuousRequests = DISABLE;
   hadc1.Init.EOCSelection = ADC_EOC_SINGLE_CONV;
   if (HAL_ADC_Init(&hadc1) != HAL_OK)
@@ -256,7 +361,7 @@ static void MX_ADC1_Init(void)
   }
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
-  */
+//  */
 //  sConfig.Channel = ADC_CHANNEL_0;
 //  sConfig.Rank = 1;
 //  sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES;
@@ -285,6 +390,40 @@ static void MX_ADC1_Init(void)
   /* USER CODE BEGIN ADC1_Init 2 */
 
   /* USER CODE END ADC1_Init 2 */
+
+}
+
+/**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.ClockSpeed = 100000;
+  hi2c1.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
 
 }
 

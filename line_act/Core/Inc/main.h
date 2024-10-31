@@ -54,6 +54,13 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 
+/** @brief  remaps a values range, rewritten arduino map() fn
+ * @ author daniel krygsman
+  * @param
+  * @retval
+  */
+float remap_val(float value, float in_min, float in_max, float out_min, float out_max);
+
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

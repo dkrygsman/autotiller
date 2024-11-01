@@ -49,6 +49,8 @@ ADC_HandleTypeDef hadc1;
 
 I2C_HandleTypeDef hi2c1;
 
+TIM_HandleTypeDef htim3;
+
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
@@ -80,6 +82,7 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -167,7 +170,11 @@ int main(void)
   MX_USART2_UART_Init();
   MX_ADC1_Init();
   MX_I2C1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
+
+  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+
 
 
   bno = (bno055_t)
@@ -175,32 +182,32 @@ int main(void)
 	.i2c = &hi2c1, .addr = BNO_ADDR, .mode = BNO_MODE_IMU, ._temp_unit = 0,
 	// .ptr = &bno,
   };
-	HAL_Delay(1000);
+  HAL_Delay(1000);
 
-	if ((err = bno055_init(&bno)) == BNO_OK)
-	{
-		printf("[+] BNO055 init success\r\n");
-		HAL_Delay(100);
-	}
-	else
-	{
-		printf("[!] BNO055 init failed\r\n");
-		printf("%s\n", bno055_err_str(err));
-		Error_Handler();
-	}
-		HAL_Delay(100);
-		err = bno055_set_unit(&bno, BNO_TEMP_UNIT_C, BNO_GYR_UNIT_DPS, BNO_ACC_UNITSEL_M_S2, BNO_EUL_UNIT_DEG);
-	if (err != BNO_OK)
-	{
-		printf("[BNO] Failed to set units. Err: %d\r\n", err);
-	}
-	else
-	{
-		printf("[BNO] Unit selection success\r\n");
-	}
+  if ((err = bno055_init(&bno)) == BNO_OK)
+  {
+  	  printf("[+] BNO055 init success\r\n");
+	  HAL_Delay(100);
+  }
+  else
+  {
+	  printf("[!] BNO055 init failed\r\n");
+	  printf("%s\n", bno055_err_str(err));
+	  Error_Handler();
+  }
+	  HAL_Delay(100);
+	  err = bno055_set_unit(&bno, BNO_TEMP_UNIT_C, BNO_GYR_UNIT_DPS, BNO_ACC_UNITSEL_M_S2, BNO_EUL_UNIT_DEG);
+  if (err != BNO_OK)
+  {
+	  printf("[BNO] Failed to set units. Err: %d\r\n", err);
+  }
+  else
+  {
+	  printf("[BNO] Unit selection success\r\n");
+  }
 
-	HAL_Delay(1000);
-	bno055_euler_t eul = {0, 0, 0};
+  HAL_Delay(1000);
+  bno055_euler_t eul = {0, 0, 0};
 
   /* USER CODE END 2 */
 
@@ -256,22 +263,24 @@ int main(void)
 
 	  PID_total = PID_p + PID_i + PID_d;
 
-	  PID_total = remap_val(PID_total, -3000, 3000, 0, 150);
+	  PID_total = remap_val(PID_total, -3000, 3000, 250, 1250);
 
-	  if(PID_total < 20)
+	  if(PID_total < 138)
 	  {
-		  PID_total = 20;
+		  PID_total = 138;
 	  }
-	  if(PID_total > 160)
+	  if(PID_total > 1111)
 	  {
-		  PID_total = 160;
+		  PID_total = 1111;
 	  }
 
 
 	  printf("K_p: %3.0f K_i: %2.2f  K_d: %4.0f New_Yaw: %ld PID_tot: %4.2f\r\n", kp, ki, kd, new_yaw, PID_total);
 	  fflush(stdout);
-	  HAL_Delay(50);
 
+	  __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2, PID_total);
+
+	  HAL_Delay(10);
 
   }
   /* USER CODE END 3 */
@@ -299,9 +308,9 @@ void SystemClock_Config(void)
   RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 16;
-  RCC_OscInitStruct.PLL.PLLN = 336;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
+  RCC_OscInitStruct.PLL.PLLM = 8;
+  RCC_OscInitStruct.PLL.PLLN = 84;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 4;
   if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
   {
@@ -361,7 +370,7 @@ static void MX_ADC1_Init(void)
   }
 
   /** Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time.
-//  */
+  */
 //  sConfig.Channel = ADC_CHANNEL_0;
 //  sConfig.Rank = 1;
 //  sConfig.SamplingTime = ADC_SAMPLETIME_28CYCLES;
@@ -424,6 +433,65 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 180-1;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 9333-1;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+  HAL_TIM_MspPostInit(&htim3);
 
 }
 

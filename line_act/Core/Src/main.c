@@ -27,6 +27,9 @@
 #include "bno055.h"
 #include "bno_config.h"
 
+#include "fonts.h"
+#include "ssd1306.h"
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -48,6 +51,7 @@
 ADC_HandleTypeDef hadc1;
 
 I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c3;
 
 TIM_HandleTypeDef htim3;
 
@@ -83,6 +87,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_ADC1_Init(void);
 static void MX_I2C1_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_I2C3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -171,6 +176,7 @@ int main(void)
   MX_ADC1_Init();
   MX_I2C1_Init();
   MX_TIM3_Init();
+  MX_I2C3_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
@@ -208,6 +214,53 @@ int main(void)
 
   HAL_Delay(1000);
   bno055_euler_t eul = {0, 0, 0};
+
+
+
+
+  //________________________________________________________________________________________oled code____________________
+
+
+  SSD1306_Init();
+
+
+
+//  SSD1306_GotoXY (0,0);
+//  SSD1306_Puts ("K_p:  K_i:  K_d: Y:", &Font_7x10, 1);
+//  SSD1306_GotoXY (0, 30);
+//  SSD1306_Puts ("BY NIZAR", &Font_11x18, 1);
+//  SSD1306_UpdateScreen();
+//  HAL_Delay (1000);
+//  SSD1306_ScrollRight(0,7);
+//  HAL_Delay(3000);
+//  SSD1306_ScrollLeft(0,7);
+//  HAL_Delay(3000);
+//  SSD1306_Stopscroll();
+//  SSD1306_Clear();
+//
+////  int num=2024;
+//  char snum[5];
+//  SSD1306_GotoXY (30,20);
+//  itoa(heading_setpoint, snum, 10);
+//  SSD1306_Puts (snum, &Font_16x26, 1);
+//  SSD1306_UpdateScreen();
+//
+//  //SSD1306_DrawLine(POINT1 X, POINT1 Y, POINT2 X, POINT2 Y, 1);
+//  SSD1306_DrawLine(1,54,126,54,1);
+//  SSD1306_UpdateScreen();
+//  HAL_Delay (5000);
+//  SSD1306_Clear();
+//
+//  // For Rectangle, we need to use two corner points
+//  // SSD1306_DrawRectangle(POINT1 X, POINT1 Y, POINT2 X, POINT2 Y, 1);
+//  SSD1306_DrawRectangle(17,1,115,14,1);
+//  // SSD1306_DrawTriangle(POINT1X, POINT1Y, POINT2X, POINT2Y, POINT3X, POINT3Y, 1);
+//  SSD1306_DrawTriangle(73,22,124,62,74,54,1);
+//  // SSD1306_DrawCircle(CENTER POINT X, CENTER POINT Y, RADIUS, 1);
+//  SSD1306_DrawCircle(34,50,13,1);
+//  SSD1306_UpdateScreen();
+
+  //___________________________________________________________________________________________________________________________
 
   /* USER CODE END 2 */
 
@@ -277,6 +330,41 @@ int main(void)
 
 	  printf("K_p: %3.0f K_i: %2.2f  K_d: %4.0f New_Yaw: %ld PID_tot: %4.2f\r\n", kp, ki, kd, new_yaw, PID_total);
 	  fflush(stdout);
+
+
+	  SSD1306_GotoXY (0,0);
+	  SSD1306_Puts ("PID Controller", &Font_7x10, 1);
+
+	  SSD1306_GotoXY (0,16);
+	  SSD1306_Puts ("P: ", &Font_7x10, 1);
+	  char char_buff[7];
+	  sprintf(char_buff, "%3.0f", kp);
+	  SSD1306_GotoXY (35,16);
+	  SSD1306_Puts (char_buff, &Font_7x10, 1);
+	  SSD1306_UpdateScreen();
+
+	  SSD1306_GotoXY (0,27);
+	  SSD1306_Puts ("I: ", &Font_7x10, 1);
+	  sprintf(char_buff, "%2.2f", ki);
+	  SSD1306_GotoXY (35,27);
+	  SSD1306_Puts (char_buff, &Font_7x10, 1);
+	  SSD1306_UpdateScreen();
+
+	  SSD1306_GotoXY (0,38);
+	  SSD1306_Puts ("D: ", &Font_7x10, 1);
+	  sprintf(char_buff, "%4.0f", kd);
+	  SSD1306_GotoXY (35,38);
+	  SSD1306_Puts (char_buff, &Font_7x10, 1);
+	  SSD1306_UpdateScreen();
+
+	  SSD1306_GotoXY (0,49);
+	  SSD1306_Puts ("Yaw: ", &Font_7x10, 1);
+	  sprintf(char_buff, "%ld", new_yaw);
+	  SSD1306_GotoXY (35,49);
+	  SSD1306_Puts (char_buff, &Font_7x10, 1);
+	  SSD1306_UpdateScreen();
+
+
 
 	  __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2, PID_total);
 
@@ -433,6 +521,40 @@ static void MX_I2C1_Init(void)
   /* USER CODE BEGIN I2C1_Init 2 */
 
   /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
+  * @brief I2C3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C3_Init(void)
+{
+
+  /* USER CODE BEGIN I2C3_Init 0 */
+
+  /* USER CODE END I2C3_Init 0 */
+
+  /* USER CODE BEGIN I2C3_Init 1 */
+
+  /* USER CODE END I2C3_Init 1 */
+  hi2c3.Instance = I2C3;
+  hi2c3.Init.ClockSpeed = 400000;
+  hi2c3.Init.DutyCycle = I2C_DUTYCYCLE_2;
+  hi2c3.Init.OwnAddress1 = 0;
+  hi2c3.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c3.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c3.Init.OwnAddress2 = 0;
+  hi2c3.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c3.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C3_Init 2 */
+
+  /* USER CODE END I2C3_Init 2 */
 
 }
 

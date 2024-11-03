@@ -221,7 +221,7 @@ int main(void)
   //________________________________________________________________________________________oled code____________________
 
 
-  SSD1306_Init();
+  //SSD1306_Init();
 
 
 
@@ -332,43 +332,43 @@ int main(void)
 	  fflush(stdout);
 
 
-	  SSD1306_GotoXY (0,0);
-	  SSD1306_Puts ("PID Controller", &Font_7x10, 1);
-
-	  SSD1306_GotoXY (0,16);
-	  SSD1306_Puts ("P: ", &Font_7x10, 1);
-	  char char_buff[7];
-	  sprintf(char_buff, "%3.0f", kp);
-	  SSD1306_GotoXY (35,16);
-	  SSD1306_Puts (char_buff, &Font_7x10, 1);
-	  SSD1306_UpdateScreen();
-
-	  SSD1306_GotoXY (0,27);
-	  SSD1306_Puts ("I: ", &Font_7x10, 1);
-	  sprintf(char_buff, "%2.2f", ki);
-	  SSD1306_GotoXY (35,27);
-	  SSD1306_Puts (char_buff, &Font_7x10, 1);
-	  SSD1306_UpdateScreen();
-
-	  SSD1306_GotoXY (0,38);
-	  SSD1306_Puts ("D: ", &Font_7x10, 1);
-	  sprintf(char_buff, "%4.0f", kd);
-	  SSD1306_GotoXY (35,38);
-	  SSD1306_Puts (char_buff, &Font_7x10, 1);
-	  SSD1306_UpdateScreen();
-
-	  SSD1306_GotoXY (0,49);
-	  SSD1306_Puts ("Yaw: ", &Font_7x10, 1);
-	  sprintf(char_buff, "%ld", new_yaw);
-	  SSD1306_GotoXY (35,49);
-	  SSD1306_Puts (char_buff, &Font_7x10, 1);
-	  SSD1306_UpdateScreen();
+//	  SSD1306_GotoXY (0,0);
+//	  SSD1306_Puts ("PID Controller", &Font_7x10, 1);
+//
+//	  SSD1306_GotoXY (0,16);
+//	  SSD1306_Puts ("P: ", &Font_7x10, 1);
+//	  char char_buff[1000];
+//	  sprintf(char_buff, "%3.0f", kp);
+//	  SSD1306_GotoXY (35,16);
+//	  SSD1306_Puts (char_buff, &Font_7x10, 1);
+//	  SSD1306_UpdateScreen();
+//
+//	  SSD1306_GotoXY (0,27);
+//	  SSD1306_Puts ("I: ", &Font_7x10, 1);
+//	  sprintf(char_buff, "%2.2f", ki);
+//	  SSD1306_GotoXY (35,27);
+//	  SSD1306_Puts (char_buff, &Font_7x10, 1);
+//	  SSD1306_UpdateScreen();
+//
+//	  SSD1306_GotoXY (0,38);
+//	  SSD1306_Puts ("D: ", &Font_7x10, 1);
+//	  sprintf(char_buff, "%4.0f", kd);
+//	  SSD1306_GotoXY (35,38);
+//	  SSD1306_Puts (char_buff, &Font_7x10, 1);
+//	  SSD1306_UpdateScreen();
+//
+//	  SSD1306_GotoXY (0,49);
+//	  SSD1306_Puts ("Yaw: ", &Font_7x10, 1);
+//	  sprintf(char_buff, "%ld", new_yaw);
+//	  SSD1306_GotoXY (35,49);
+//	  SSD1306_Puts (char_buff, &Font_7x10, 1);
+//	  SSD1306_UpdateScreen();
 
 
 
 	  __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_2, PID_total);
 
-	  HAL_Delay(10);
+	  HAL_Delay(2);
 
   }
   /* USER CODE END 3 */

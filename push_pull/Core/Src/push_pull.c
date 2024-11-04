@@ -16,6 +16,29 @@
 
 #define THRESHOLD 50
 
+uint32_t state;
+
+
+/**
+  * @brief  sets gpio pins high or low for forward or reverse, from microcontroller to h-bridge to drive the linear actuator
+  *
+  * @note
+  *
+  * @param
+  * @param
+  * @param
+  * @retval None
+  */
+void push_pull_init(GPIO_TypeDef* GPIO_forward_port, uint16_t GPIO_forward_pin, GPIO_TypeDef* GPIO_reverse_port, uint16_t GPIO_reverse_pin)
+{
+	state = 1;
+
+	HAL_GPIO_WritePin(GPIO_forward_port, GPIO_forward_pin, GPIO_PIN_RESET);
+	HAL_GPIO_WritePin(GPIO_reverse_port, GPIO_reverse_pin, GPIO_PIN_RESET);
+
+}
+
+
 
 
 /**
@@ -33,22 +56,55 @@ void linear_set(uint32_t target_value, GPIO_TypeDef* GPIO_forward_port, uint16_t
 
 	if(target_value > 0 && target_value < 1100)
 	{
-		if((target_value- THRESHOLD) >= pot)
+		switch(state)
 		{
-			HAL_GPIO_WritePin(GPIO_forward_port, GPIO_forward_pin, GPIO_PIN_SET);
-		}
-		else
-		{
-			HAL_GPIO_WritePin(GPIO_forward_port, GPIO_forward_pin, GPIO_PIN_RESET);
-		}
-
-		if((target_value+THRESHOLD) <= pot)
-		{
-			HAL_GPIO_WritePin(GPIO_reverse_port, GPIO_reverse_pin, GPIO_PIN_SET);
-		}
-		else
-		{
-			HAL_GPIO_WritePin(GPIO_reverse_port, GPIO_reverse_pin, GPIO_PIN_RESET);
+			case 1:				//chill state
+			{
+				if((target_value- THRESHOLD) >= pot)	//transition to reverse state
+				{
+					HAL_GPIO_WritePin(GPIO_reverse_port, GPIO_reverse_pin, GPIO_PIN_SET);
+					state = 2;
+				}
+				if((target_value+THRESHOLD) <= pot)			//transition to forward
+				{
+					HAL_GPIO_WritePin(GPIO_forward_port, GPIO_forward_pin, GPIO_PIN_SET);
+					state = 3;
+				}
+				//printf("Not moving\t");
+			}
+			break;
+			case 2:			//forward state
+			{
+				if((target_value- THRESHOLD) >= pot)	 		//transition to reverse
+				{
+					HAL_GPIO_WritePin(GPIO_forward_port, GPIO_forward_pin, GPIO_PIN_RESET);
+					HAL_GPIO_WritePin(GPIO_reverse_port, GPIO_reverse_pin, GPIO_PIN_SET);
+					state = 3;
+				}
+				if((target_value-THRESHOLD) < pot && (target_value+THRESHOLD) > pot)	//transition to chill state
+				{
+					HAL_GPIO_WritePin(GPIO_forward_port, GPIO_forward_pin, GPIO_PIN_RESET);
+					state = 1;
+				}
+				//printf("Moving forward\t");
+			}
+			break;
+			case 3:				//reverse state
+			{
+				if((target_value+THRESHOLD) <= pot)			 //transition to forward state
+				{
+					HAL_GPIO_WritePin(GPIO_reverse_port, GPIO_reverse_pin, GPIO_PIN_RESET);
+					HAL_GPIO_WritePin(GPIO_forward_port, GPIO_forward_pin, GPIO_PIN_SET);
+					state = 2;
+				}
+				if((target_value-THRESHOLD) < pot && (target_value+THRESHOLD) > pot)	//transition to chill
+				{
+					HAL_GPIO_WritePin(GPIO_reverse_port, GPIO_reverse_pin, GPIO_PIN_RESET);
+					state = 1;
+				}
+				//printf("Moving backwards\t");
+			}
+			break;
 		}
 	}
 	else

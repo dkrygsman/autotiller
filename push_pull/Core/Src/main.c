@@ -115,6 +115,10 @@ int main(void)
 
   /* USER CODE BEGIN Init */
 
+
+  push_pull_init(GPIOA, GPIO_PIN_8, GPIOB, GPIO_PIN_10);
+
+
   /* USER CODE END Init */
 
   /* Configure the system clock */

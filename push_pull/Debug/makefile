@@ -60,8 +60,8 @@ all: main-build
 main-build: push_pull.elf secondary-outputs
 
 # Tool invocations
-push_pull.elf push_pull.map: $(OBJS) $(USER_OBJS) C:\Users\danie\OneDrive\Desktop\linear_actuator\push_pull\STM32F411RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "push_pull.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\danie\OneDrive\Desktop\linear_actuator\push_pull\STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="push_pull.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
+push_pull.elf push_pull.map: $(OBJS) $(USER_OBJS) C:\Users\danie\OneDrive\Desktop\autotiller\push_pull\STM32F411RETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "push_pull.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\danie\OneDrive\Desktop\autotiller\push_pull\STM32F411RETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="push_pull.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -u _printf_float -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

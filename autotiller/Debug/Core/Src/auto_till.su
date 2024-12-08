@@ -1,0 +1,4 @@
+../Core/Src/auto_till.c:32:6:push_pull_init	24	static
+../Core/Src/auto_till.c:41:6:linear_set	24	static
+../Core/Src/auto_till.c:91:6:linear_set_stateM	24	static
+../Core/Src/auto_till.c:165:5:remap_val	32	static

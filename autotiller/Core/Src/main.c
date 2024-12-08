@@ -31,6 +31,7 @@
 #include "bno055.h"
 #include "bno_config.h"
 
+#include "auto_till.h"
 
 /* USER CODE END Includes */
 
@@ -61,6 +62,16 @@ UART_HandleTypeDef huart2;
 
 bno055_t bno;
 error_bno err;
+
+
+uint32_t feedback_pot, offset_pot;
+uint32_t new_yaw, period = 50;
+
+float heading, heading_error, heading_difference, PID_p, PID_i, PID_d;
+float heading_prev_error = 0;
+float heading_set_point;
+float kp = 9, ki = .25, kd = 3300;
+float PID_total;
 
 /* USER CODE END PV */
 
@@ -103,7 +114,7 @@ void ADC_Select_CH1 (void)
 	}
 }
 
-uint32_t feedback_pot, offset_pot;
+
 
 
 /* USER CODE END 0 */
@@ -125,6 +136,8 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
+
+  push_pull_init(GPIOC, GPIO_PIN_7, GPIOA, GPIO_PIN_9);
 
   /* USER CODE END Init */
 
@@ -191,9 +204,6 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	  bno.euler(&bno, &eul);
-
-	  //uint32_t yaw = (int)eul.yaw;
 
 	  ADC_Select_CH0();
 	  HAL_ADC_Start(&hadc1);
@@ -205,18 +215,70 @@ int main(void)
 	  HAL_ADC_Start(&hadc1);
 	  HAL_ADC_PollForConversion(&hadc1, 1000);
 	  offset_pot = HAL_ADC_GetValue(&hadc1);
+	  offset_pot = (offset_pot/100) - 20;
 	  HAL_ADC_Stop(&hadc1);
 
+	  bno.euler(&bno, &eul);
+	  new_yaw = (int)eul.yaw;
+	  new_yaw = ((new_yaw + 180) % 360) + offset_pot;
 
-	  printf("%ld  %ld\r\n", feedback_pot, offset_pot);
+	  heading_set_point = 180 + offset_pot;
+
+	  heading = new_yaw;
+	  heading_error = heading_set_point - heading;
+	  PID_p = kp * heading_error;
+
+	  heading_difference = heading_error - heading_prev_error;
+	  PID_d = kd * ((heading_error - heading_prev_error)/ period);
+
+	  if(heading_error > -3 && heading_error < 3)
+	  {
+		  PID_i = PID_i + (ki * heading_error);
+	  }
+	  else
+	  {
+		  PID_i = 0;
+	  }
+
+	  PID_total = PID_p + PID_i + PID_d;
+
+
+
+//	  printf("%f  %f  %f  %f  %f\r\n", PID_p, PID_i, PID_d, PID_total, heading_error);
+//	  fflush(stdout);
+//	  HAL_Delay(2);
+
+	  printf("%f\t", PID_total);
+	  fflush(stdout);
+	  HAL_Delay(2);
+
+	  PID_total = remap_val(PID_total, -3000, 3000, 1, 1001);
+	  feedback_pot = remap_val(feedback_pot, 0, 4100, 1, 1001);
+
+	  if(PID_total < 100)
+	  {
+		  PID_total = 100;
+	  }
+	  if(PID_total > 900)
+	  {
+		  PID_total = 900;
+	  }
+
+//	  printf("%f\r\n", PID_total);
+//	  fflush(stdout);
+//	  HAL_Delay(2);
+
+	  linear_set(feedback_pot, GPIOC, GPIO_PIN_7, GPIOA, GPIO_PIN_9, PID_total);
+
+	  printf("%ld  %f\r\n", PID_total, feedback_pot);
 	  fflush(stdout);
 	  HAL_Delay(2);
 
 	  char char_buff[1000];
-	  sprintf(char_buff, "%ld", offset_pot);
+	  sprintf(char_buff, "%ld", new_yaw);
 
 	  SSD1306_GotoXY (0,0);
-	  SSD1306_Puts ("Offset:", &Font_7x10, 1);
+	  SSD1306_Puts ("NewY:", &Font_7x10, 1);
 
 	  SSD1306_GotoXY (50,0);
 	  SSD1306_Puts (char_buff, &Font_7x10, 1);
@@ -329,7 +391,7 @@ static void MX_ADC1_Init(void)
 //  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
 //  {
 //    Error_Handler();
-//  }
+  }
 /**
   * @brief I2C1 Initialization Function
   * @param None
@@ -480,7 +542,7 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-__attribute__((weak)) int _write(int file, char *ptr, int len)
+int _write(int file, char *ptr, int len)
 {
   (void)file;
   int DataIdx;

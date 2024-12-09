@@ -14,7 +14,7 @@
 #include "stm32f4xx_hal.h"
 #include "auto_till.h"
 
-#define THRESHOLD 30
+#define THRESHOLD 40
 
 uint32_t state;
 
@@ -41,11 +41,8 @@ void push_pull_init(GPIO_TypeDef* GPIO_forward_port, uint16_t GPIO_forward_pin, 
 void linear_set(uint32_t target_value, GPIO_TypeDef* GPIO_forward_port, uint16_t GPIO_forward_pin, GPIO_TypeDef* GPIO_reverse_port, uint16_t GPIO_reverse_pin, uint32_t pot)
 {
 
-	if(target_value > 0 && target_value < 1100)
-	{
-
 		//printf("1\t");
-		if((target_value+THRESHOLD) <= pot)
+		if((target_value+THRESHOLD) <= pot && target_value < 1070)
 		{
 			HAL_GPIO_WritePin(GPIO_forward_port, GPIO_forward_pin, GPIO_PIN_SET);
 			//printf("2\t");
@@ -56,7 +53,7 @@ void linear_set(uint32_t target_value, GPIO_TypeDef* GPIO_forward_port, uint16_t
 			//printf("2.5\t");
 		}
 
-		if((target_value- THRESHOLD) >= pot)
+		if((target_value- THRESHOLD) >= pot && target_value > 130)
 		{
 			HAL_GPIO_WritePin(GPIO_reverse_port, GPIO_reverse_pin, GPIO_PIN_SET);
 			//printf("3\t");
@@ -67,12 +64,7 @@ void linear_set(uint32_t target_value, GPIO_TypeDef* GPIO_forward_port, uint16_t
 			//printf("3.5\t");
 		}
 
-	}
-	else
-	{
-		printf("Error, target value is outside of range");
-		fflush(stdout);
-	}
+
 
 
 }

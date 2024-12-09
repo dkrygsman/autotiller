@@ -65,7 +65,7 @@ error_bno err;
 
 
 uint32_t feedback_pot, offset_pot;
-uint32_t new_yaw, period = 50;
+uint32_t yaw, new_yaw, period = 50;
 
 float heading, heading_error, heading_difference, PID_p, PID_i, PID_d;
 float heading_prev_error = 0;
@@ -219,10 +219,11 @@ int main(void)
 	  HAL_ADC_Stop(&hadc1);
 
 	  bno.euler(&bno, &eul);
-	  new_yaw = (int)eul.yaw;
-	  new_yaw = ((new_yaw + 180) % 360) + offset_pot;
+	  yaw = (int)eul.yaw;
+	  yaw = (yaw + 180) % 360;
+	  new_yaw = yaw + offset_pot;
 
-	  heading_set_point = 180 + offset_pot;
+	  heading_set_point = 180;
 
 	  heading = new_yaw;
 	  heading_error = heading_set_point - heading;
@@ -248,20 +249,20 @@ int main(void)
 //	  fflush(stdout);
 //	  HAL_Delay(2);
 
-	  printf("%f\t", PID_total);
-	  fflush(stdout);
-	  HAL_Delay(2);
+//	  printf("%f\t", PID_total);
+//	  fflush(stdout);
+//	  HAL_Delay(2);
 
-	  PID_total = remap_val(PID_total, -3000, 3000, 1, 1001);
-	  feedback_pot = remap_val(feedback_pot, 0, 4100, 1, 1001);
+	  PID_total = remap_val(PID_total, -3000, 3000, -400, 1600);
+	  feedback_pot = remap_val(feedback_pot, 0, 4100, 101, 1099);	//limits set at 130 and 1070
 
-	  if(PID_total < 100)
+	  if(PID_total < -200)
 	  {
-		  PID_total = 100;
+		  PID_total = -200;
 	  }
-	  if(PID_total > 900)
+	  if(PID_total > 1400)
 	  {
-		  PID_total = 900;
+		  PID_total = 1400;
 	  }
 
 //	  printf("%f\r\n", PID_total);
@@ -270,18 +271,24 @@ int main(void)
 
 	  linear_set(feedback_pot, GPIOC, GPIO_PIN_7, GPIOA, GPIO_PIN_9, PID_total);
 
-	  printf("%ld  %f\r\n", PID_total, feedback_pot);
-	  fflush(stdout);
-	  HAL_Delay(2);
+//	  printf("%f  %ld\r\n", PID_total, feedback_pot);
+//	  fflush(stdout);
+//	  HAL_Delay(2);
 
-	  char char_buff[1000];
-	  sprintf(char_buff, "%ld", new_yaw);
+	  char char_buff_1[1000], char_buff_2[1000];
+	  sprintf(char_buff_1, "%ld", yaw);
+	  sprintf(char_buff_2, "%ld", offset_pot);
+
 
 	  SSD1306_GotoXY (0,0);
-	  SSD1306_Puts ("NewY:", &Font_7x10, 1);
+	  SSD1306_Puts ("Yaw:", &Font_7x10, 1);
+	  SSD1306_GotoXY (0,30);
+	  SSD1306_Puts ("Offset:", &Font_7x10, 1);
 
 	  SSD1306_GotoXY (50,0);
-	  SSD1306_Puts (char_buff, &Font_7x10, 1);
+	  SSD1306_Puts (char_buff_1, &Font_7x10, 1);
+	  SSD1306_GotoXY (50,30);
+	  SSD1306_Puts (char_buff_2, &Font_7x10, 1);
 	  SSD1306_UpdateScreen();
 	  HAL_Delay (2);
 	  SSD1306_Clear();

@@ -219,29 +219,29 @@ int main(void)
 	  HAL_ADC_Stop(&hadc1);
 
 	  bno.euler(&bno, &eul);
-	  yaw = (int)eul.yaw;
-	  yaw = (yaw + 180) % 360;
-	  new_yaw = yaw + offset_pot;
+	  yaw = (int)eul.yaw;				//populate yaw with euler.yaw value
+	  yaw = (yaw + 180) % 360;			//modulus for setting first value to 180 instead of 0
+	  new_yaw = yaw + offset_pot;		//shifting the heading based off offset
 
 	  heading_set_point = 180;
 
 	  heading = new_yaw;
 	  heading_error = heading_set_point - heading;
-	  PID_p = kp * heading_error;
+	  PID_p = kp * heading_error;						//proportional component
 
 	  heading_difference = heading_error - heading_prev_error;
-	  PID_d = kd * ((heading_error - heading_prev_error)/ period);
+	  PID_d = kd * ((heading_error - heading_prev_error)/ period);		//derivative component
 
-	  if(heading_error > -3 && heading_error < 3)
+	  if(heading_error > -3 && heading_error < 3)		//integral cutoffs
 	  {
-		  PID_i = PID_i + (ki * heading_error);
+		  PID_i = PID_i + (ki * heading_error);				//integral component
 	  }
 	  else
 	  {
 		  PID_i = 0;
 	  }
 
-	  PID_total = PID_p + PID_i + PID_d;
+	  PID_total = PID_p + PID_i + PID_d;		//combining P, I, and D components
 
 
 
@@ -253,10 +253,10 @@ int main(void)
 //	  fflush(stdout);
 //	  HAL_Delay(2);
 
-	  PID_total = remap_val(PID_total, -3000, 3000, -400, 1600);
+	  PID_total = remap_val(PID_total, -3000, 3000, -400, 1600); 		//remapping values for range and sensitivity
 	  feedback_pot = remap_val(feedback_pot, 0, 4100, 101, 1099);	//limits set at 130 and 1070
 
-	  if(PID_total < -200)
+	  if(PID_total < -200)			//PID limits
 	  {
 		  PID_total = -200;
 	  }
